@@ -64,6 +64,12 @@ byte value;
 // Display bottom right
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
+// start at 0; incl. start, excl. end
+int co2_start = 0;
+int co2_end = 4;
+int temp_start = 7;
+int temp_end = 11;
+
 // PM2.5 in US AQI (default ug/m3)
 boolean inUSAQI = false;
 
@@ -358,23 +364,24 @@ String getNormalizedMac() {
 }
 
 void setRGBledCO2color(int co2Value) {
-  if (co2Value >= 300 && co2Value < 800) setRGBledColor('g');
-  if (co2Value >= 800 && co2Value < 1000) setRGBledColor('y');
-  if (co2Value >= 1000 && co2Value < 1500) setRGBledColor('o');
-  if (co2Value >= 1500 && co2Value < 2000) setRGBledColor('r');
-  if (co2Value >= 2000 && co2Value < 3000) setRGBledColor('p');
-  if (co2Value >= 3000 && co2Value < 10000) setRGBledColor('z');
+  if (co2Value >= 300 && co2Value < 800) setRGBledColor(0x00FF00, co2_start, co2_end);
+  if (co2Value >= 800 && co2Value < 1000) setRGBledColor(0x80FF00, co2_start, co2_end);
+  if (co2Value >= 1000 && co2Value < 1200) setRGBledColor(0xFFFF00, co2_start, co2_end);
+  if (co2Value >= 1200 && co2Value < 1500) setRGBledColor(0xFF8000, co2_start, co2_end);
+  if (co2Value >= 1500 && co2Value < 2000) setRGBledColor(0xFF0000, co2_start, co2_end);
+  if (co2Value >= 2000 && co2Value < 3000) setRGBledColor(0x660000, co2_start, co2_end);
+  if (co2Value >= 3000 && co2Value < 10000) setRGBledColor(0x990099, co2_start, co2_end);
 }
 
-int tempRamp(float temp, int min_temp, int max_temp, bool invert = false){
-  if (temp <= min_temp){
+int tempRamp(float temp, int min_temp, int max_temp, bool invert = false) {
+  if (temp <= min_temp) {
     return invert ? 255 : 0;
   }
-  if (temp >= max_temp){
+  if (temp >= max_temp) {
     return invert ? 0 : 255;
   }
-  if(invert){
-    float value = (1- (temp - min_temp) / (max_temp - min_temp)) * 255;
+  if (invert) {
+    float value = (1 - (temp - min_temp) / (max_temp - min_temp)) * 255;
     return (int)value;
   }
   float value = (temp - min_temp) / (max_temp - min_temp) * 255;
@@ -383,87 +390,18 @@ int tempRamp(float temp, int min_temp, int max_temp, bool invert = false){
 
 void setRGBledTempColor(float tempValue) {
   const int baseTemp = 22;
-  int colorR = tempRamp(tempValue, baseTemp, baseTemp+6);
-  int colorG = tempRamp(tempValue, baseTemp-6, baseTemp)-tempRamp(tempValue, baseTemp, baseTemp+6);
-  int colorB = tempRamp(tempValue, baseTemp-6, baseTemp, true);
-  for (int i = 6; i < 11; i++) {
-    pixels.setPixelColor(i, pixels.Color(colorR, colorG, colorB));
-    delay(30);
-    pixels.show();
-  }
+  int r = tempRamp(tempValue, baseTemp, baseTemp + 6);
+  int g = tempRamp(tempValue, baseTemp - 6, baseTemp) - tempRamp(tempValue, baseTemp, baseTemp + 6);
+  int b = tempRamp(tempValue, baseTemp - 6, baseTemp, true);
+  setRGBledColor(((r << 16) | (g << 8) | b), temp_start, temp_end);
 }
 
-void setRGBledColor(char color) {
+void setRGBledColor(uint32_t color, int start, int end) {
   if (useRGBledBar) {
-    //pixels.clear();
-    switch (color) {
-    case 'g':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 255, 0));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'y':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 255, 0));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'o':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 128, 0));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'r':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 0, 0));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'b':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 0, 255));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'w':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 255, 255));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'p':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(153, 0, 153));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'z':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(102, 0, 0));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    case 'n':
-      for (int i = 0; i < 5; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-        delay(30);
-        pixels.show();
-      }
-      break;
-    default:
-      // if nothing else matches, do the default.
-      // default is optional.
-      break;
+    for (int i = start; i < end; i++) {
+      pixels.setPixelColor(i, color);
+      delay(30);
+      pixels.show();
     }
   }
 }
