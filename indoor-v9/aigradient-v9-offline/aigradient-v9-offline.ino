@@ -88,9 +88,6 @@ unsigned long currentMillis = 0;
 const int oledInterval = 5000;
 unsigned long previousOled = 0;
 
-const int sendToServerInterval = 25000;
-unsigned long previoussendToServer = 0;
-
 const int tvocInterval = 1000;
 unsigned long previousTVOC = 0;
 int TVOC = -1;
@@ -98,14 +95,13 @@ int NOX = -1;
 
 const int co2Interval = 5000;
 unsigned long previousCo2 = 0;
-int Co2 = 0;
+int Co2 = 600;
 
 const int pmInterval = 5000;
 unsigned long previousPm = 0;
 int pm25 = -1;
 int pm01 = -1;
 int pm10 = -1;
-//int pm03PCount = -1;
 
 const int tempHumInterval = 5000;
 unsigned long previousTempHum = 0;
@@ -230,21 +226,6 @@ void updateTempHum() {
 
 void updateOLED() {
   if (currentMillis - previousOled >= oledInterval) {
-    previousOled += oledInterval;
-
-    String ln3;
-    String ln1;
-
-    if (inUSAQI) {
-      ln1 = "AQI:" + String(PM_TO_AQI_US(pm25)) + " CO2:" + String(Co2);
-    } else {
-      ln1 = "PM:" + String(pm25) + " CO2:" + String(Co2);
-    }
-
-    String ln2 = "TVOC:" + String(TVOC) + " NOX:" + String(NOX);
-
-    ln3 = "C:" + String(temp) + " H:" + String(hum) + "%";
-    //updateOLED2(ln1, ln2, ln3);
     updateOLED3();
     setRGBledTempColor(temp);
     setRGBledHumColor(hum);
@@ -374,10 +355,6 @@ void setRGBledCO2color(int co2Value) {
   if (co2Value >= 3000 && co2Value < 10000) setRGBledColor(0x990099, co2_start, co2_end);
 }
 
-void setRGBledHumColor(int humValue) {
-  setRGBledColor(getFeelGoodColor(humValue, 35, 45, 55, 70, 0xFFFF00, 0xFFFFFF, 0x00FFFF), hum_start, hum_end);
-}
-
 void extractRGB(uint32_t color, uint8_t& red, uint8_t& green, uint8_t& blue) {
     red = (color >> 16) & 0xFF;
     green = (color >> 8) & 0xFF;
@@ -413,6 +390,10 @@ uint32_t getFeelGoodColor(float value, float low_bad, float low_good, float high
   uint8_t b = (uint8_t) good_b * normalized + bad_b * (1 - normalized);
 
   return ((r << 16) | (g << 8) | b);
+}
+
+void setRGBledHumColor(int humValue) {
+  setRGBledColor(getFeelGoodColor(humValue, 35, 45, 55, 70, 0xFFFF00, 0xFFFFFF, 0x00FFFF), hum_start, hum_end);
 }
 
 void setRGBledTempColor(float tempValue) {
