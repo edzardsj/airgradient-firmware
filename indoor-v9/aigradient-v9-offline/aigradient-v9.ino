@@ -218,7 +218,6 @@ void updateTVOC() {
       TVOC = voc_algorithm.process(srawVoc);
       NOX = nox_algorithm.process(srawNox);
     }
-
   }
 }
 
