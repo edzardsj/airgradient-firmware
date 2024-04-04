@@ -191,8 +191,8 @@ void updateTVOC() {
   uint16_t defaultT = 0x6666;
   uint16_t srawVoc = 0;
   uint16_t srawNox = 0;
-  uint16_t defaultCompenstaionRh = 0x8000; // in ticks as defined by SGP41
-  uint16_t defaultCompenstaionT = 0x6666; // in ticks as defined by SGP41
+  uint16_t defaultCompensationRh = 0x8000; // in ticks as defined by SGP41
+  uint16_t defaultCompensationT = 0x6666; // in ticks as defined by SGP41
   uint16_t compensationRh = 0; // in ticks as defined by SGP41
   uint16_t compensationT = 0; // in ticks as defined by SGP41
 
