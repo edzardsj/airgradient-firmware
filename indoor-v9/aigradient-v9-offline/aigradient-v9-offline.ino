@@ -65,10 +65,12 @@ byte value;
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 
 // start at 0; incl. start, excl. end
-int co2_start = 0;
-int co2_end = 4;
-int temp_start = 7;
-int temp_end = 11;
+int tmp_start = 0;
+int tmp_end = 3;
+int hum_start = 4;
+int hum_end = 7;
+int co2_start = 8;
+int co2_end = 11;
 
 // PM2.5 in US AQI (default ug/m3)
 boolean inUSAQI = false;
@@ -244,8 +246,9 @@ void updateOLED() {
     ln3 = "C:" + String(temp) + " H:" + String(hum) + "%";
     //updateOLED2(ln1, ln2, ln3);
     updateOLED3();
-    setRGBledCO2color(Co2);
     setRGBledTempColor(temp);
+    setRGBledHumColor(hum);
+    setRGBledCO2color(Co2);
     pixels.show();
   }
 }
@@ -371,19 +374,8 @@ void setRGBledCO2color(int co2Value) {
   if (co2Value >= 3000 && co2Value < 10000) setRGBledColor(0x990099, co2_start, co2_end);
 }
 
-int tempRamp(float temp, int min_temp, int max_temp, bool invert = false) {
-  if (temp <= min_temp) {
-    return invert ? 255 : 0;
-  }
-  if (temp >= max_temp) {
-    return invert ? 0 : 255;
-  }
-  if (invert) {
-    float value = (1 - (temp - min_temp) / (max_temp - min_temp)) * 255;
-    return (int)value;
-  }
-  float value = (temp - min_temp) / (max_temp - min_temp) * 255;
-  return (int)value;
+void setRGBledHumColor(int humValue) {
+  setRGBledColor(getFeelGoodColor(humValue, 35, 45, 55, 70, 0xFFFF00, 0xFFFFFF, 0x00FFFF), hum_start, hum_end);
 }
 
 void extractRGB(uint32_t color, uint8_t& red, uint8_t& green, uint8_t& blue) {
@@ -424,7 +416,7 @@ uint32_t getFeelGoodColor(float value, float low_bad, float low_good, float high
 }
 
 void setRGBledTempColor(float tempValue) {
-  setRGBledColor(getFeelGoodColor(tempValue, 16, 21, 23, 28, 0x0000FF, 0x00FF00, 0xFF0000), temp_start, temp_end);
+  setRGBledColor(getFeelGoodColor(tempValue, 16, 21, 23, 28, 0x0000FF, 0x00FF00, 0xFF0000), tmp_start, tmp_end);
 }
 
 void setRGBledColor(uint32_t color, int start, int end) {
