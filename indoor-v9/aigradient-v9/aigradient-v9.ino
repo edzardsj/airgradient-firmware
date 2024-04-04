@@ -173,24 +173,6 @@ void setup() {
   setConfig();
   Serial.println("buttonConfig: " + String(buttonConfig));
 
-  updateOLED2("Press Button", "for LED test &", "offline mode");
-  delay(2000);
-  currentState = digitalRead(9);
-  if (currentState == LOW) {
-    ledTest();
-    return;
-  }
-
-  updateOLED2("Press Button", "Now for", "Config Menu");
-  delay(2000);
-  currentState = digitalRead(9);
-  if (currentState == LOW) {
-    updateOLED2("Entering", "Config Menu", "");
-    delay(3000);
-    lastState = HIGH;
-    setConfig();
-    inConf();
-  }
 
    if (connectWIFI) connectToWifi();
     if (WiFi.status() == WL_CONNECTED) {
@@ -200,7 +182,7 @@ void setup() {
       Serial.println(WiFi.localIP());
     }
   updateOLED2("Warming Up", "Serial Number:", String(getNormalizedMac()));
-}
+} // end of setup
 
 void loop() {
   currentMillis = millis();
