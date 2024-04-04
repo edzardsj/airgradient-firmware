@@ -125,7 +125,7 @@ void setup() {
   Serial0.begin(9600);
   u8g2.begin();
 
-  updateOLED2("Warming Up", "Serial Number:", String(getNormalizedMac()));
+  showInfoLines("Warming Up", "Serial Number:", String(getNormalizedMac()));
   sgp41.begin(Wire);
   delay(300);
 
@@ -143,11 +143,11 @@ void setup() {
 
 void loop() {
   currentMillis = millis();
-  updateTVOC();
-  updateOLED();
+  updateTempHum();
   updateCo2();
   updatePm();
-  updateTempHum();
+  updateTVOC();
+  updateUI();
 }  // loop()
 
 void updateTVOC() {
@@ -224,9 +224,9 @@ void updateTempHum() {
   }
 }
 
-void updateOLED() {
+void updateUI() {
   if (currentMillis - previousOled >= oledInterval) {
-    updateOLED3();
+    updateDisplay();
     setRGBledTempColor(temp);
     setRGBledHumColor(hum);
     setRGBledCO2color(Co2);
@@ -234,7 +234,7 @@ void updateOLED() {
   }
 }
 
-void updateOLED2(String ln1, String ln2, String ln3) {
+void showInfoLines(String ln1, String ln2, String ln3) {
   char buf[9];
   u8g2.firstPage();
   u8g2.firstPage();
@@ -246,7 +246,7 @@ void updateOLED2(String ln1, String ln2, String ln3) {
   } while (u8g2.nextPage());
 }
 
-void updateOLED3() {
+void updateDisplay() {
   char buf[9];
   u8g2.firstPage();
   u8g2.firstPage();
@@ -393,7 +393,7 @@ uint32_t getFeelGoodColor(float value, float low_bad, float low_good, float high
 }
 
 void setRGBledHumColor(int humValue) {
-  setRGBledColor(getFeelGoodColor(humValue, 35, 45, 55, 70, 0xFFFF00, 0xFFFFFF, 0x00FFFF), hum_start, hum_end);
+  setRGBledColor(getFeelGoodColor((float) humValue, 35, 45, 55, 70, 0xFF8000, 0xFFFFFF, 0x00FFFF), hum_start, hum_end);
 }
 
 void setRGBledTempColor(float tempValue) {
