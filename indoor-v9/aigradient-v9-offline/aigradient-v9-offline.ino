@@ -386,12 +386,45 @@ int tempRamp(float temp, int min_temp, int max_temp, bool invert = false) {
   return (int)value;
 }
 
+void extractRGB(uint32_t color, uint8_t& red, uint8_t& green, uint8_t& blue) {
+    red = (color >> 16) & 0xFF;
+    green = (color >> 8) & 0xFF;
+    blue = color & 0xFF;
+}
+
+uint32_t getFeelGoodColor(float value, float low_bad, float low_good, float high_good, float high_bad, uint32_t low_color, uint32_t good_color, uint32_t high_color) {
+  if (value <= low_bad) {
+      return low_color;
+  } else if (value >= high_bad) {
+      return high_color;
+  } else if (value >= low_good && value <= high_good) {
+      return good_color;
+  }
+
+  uint8_t good_r, good_g, good_b;
+  uint8_t bad_r, bad_g, bad_b;
+  float normalized;
+
+  extractRGB(good_color, good_r, good_g, good_b);
+
+  if (value < low_good) { // value between low_good and low_bad
+      extractRGB(low_bad, bad_r, bad_g, bad_b);
+      normalized = (low_good - value) / (low_good - low_bad);
+  } else { // value between high_good and high_bad
+      extractRGB(high_bad, bad_r, bad_g, bad_b);
+      normalized = (low_good - value) / (low_good - low_bad);
+  }
+
+  // interpolate the r, g and b values 
+  uint8_t r = (uint8_t) good_r * normalized + bad_r * (1 - normalized);
+  uint8_t g = (uint8_t) good_g * normalized + bad_g * (1 - normalized);
+  uint8_t b = (uint8_t) good_b * normalized + bad_b * (1 - normalized);
+
+  return ((r << 16) | (g << 8) | b);
+}
+
 void setRGBledTempColor(float tempValue) {
-  const int baseTemp = 22;
-  int r = tempRamp(tempValue, baseTemp, baseTemp + 6);
-  int g = tempRamp(tempValue, baseTemp - 6, baseTemp) - tempRamp(tempValue, baseTemp, baseTemp + 6);
-  int b = tempRamp(tempValue, baseTemp - 6, baseTemp, true);
-  setRGBledColor(((r << 16) | (g << 8) | b), temp_start, temp_end);
+  setRGBledColor(getFeelGoodColor(tempValue, 16, 21, 23, 28, 0x0000FF, 0x00FF00, 0xFF0000), temp_start, temp_end);
 }
 
 void setRGBledColor(uint32_t color, int start, int end) {
