@@ -8,7 +8,6 @@ Build Instructions: https://www.airgradient.com/open-airgradient/instructions/
 Kits (including a pre-soldered version) are available: https://www.airgradient.com/indoor/
 
 The code needs the following libraries installed:
-"WifiManager" by tzapu, tablatronix tested with version 2.0.17
 "U8g2" by oliver tested with version 2.34.22
 "Sensirion I2C SGP41" by Sensation Version 1.0.0
 "Sensirion Gas Index Algorithm" by Sensation Version 3.2.2
@@ -36,7 +35,6 @@ CC BY-SA 4.0 Attribution-ShareAlike 4.0 International License
 #include <Wire.h>
 #include "s8_uart.h"
 #include <HTTPClient.h>
-#include <WiFiManager.h>
 #include <Adafruit_NeoPixel.h>
 #include <EEPROM.h>
 #include "SHTSensor.h"
@@ -75,11 +73,6 @@ byte value;
 // Display bottom right
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
-String APIROOT = "http://hw.airgradient.com/";
-
-// set to true to switch from Celsius to Fahrenheit
-boolean inF = false;
-
 // PM2.5 in US AQI (default ug/m3)
 boolean inUSAQI = false;
 
@@ -88,9 +81,6 @@ boolean displayTop = true;
 
 // use RGB LED Bar
 boolean useRGBledBar = true;
-
-// set to true if you want to connect to Wi-Fi. You have 60 seconds to connect. Then it will go into an offline mode.
-boolean connectWIFI = false;
 
 int loopCount = 0;
 
@@ -123,14 +113,6 @@ unsigned long previousTempHum = 0;
 float temp;
 int hum;
 
-int buttonConfig = 0;
-int lastState = LOW;
-int currentState;
-unsigned long pressedTime = 0;
-unsigned long releasedTime = 0;
-//mqtt://test.mosquitto.org
-const char* mqtt_server = "192.168.178.43";
-int        port     = 1883;
 
 void setup() {
   if (DEBUG) {
@@ -162,17 +144,7 @@ void setup() {
   digitalWrite(2, LOW);
 
   sensor_S8 = new S8_UART(Serial1);
-
-  if (connectWIFI) {
-    connectToWifi();
-    if (WiFi.status() == WL_CONNECTED && DEBUG) {
-      sendPing();
-      Serial.println(F("WiFi connected!"));
-      Serial.println("IP address: ");
-      Serial.println(WiFi.localIP());
-    }
-  }
-} // end of setup
+} // setup()
 
 void loop() {
   currentMillis = millis();
@@ -181,8 +153,7 @@ void loop() {
   updateCo2();
   updatePm();
   updateTempHum();
-  sendToServer();
-}
+} // loop()
 
 void updateTVOC() {
   uint16_t error;
@@ -275,115 +246,13 @@ void updateOLED() {
 
     String ln2 = "TVOC:" + String(TVOC) + " NOX:" + String(NOX);
 
-    if (inF) {
-      ln3 = "F:" + String((temp * 9 / 5) + 32) + " H:" + String(hum) + "%";
-    } else {
-      ln3 = "C:" + String(temp) + " H:" + String(hum) + "%";
-    }
+    ln3 = "C:" + String(temp) + " H:" + String(hum) + "%";
     //updateOLED2(ln1, ln2, ln3);
     updateOLED3();
     setRGBledCO2color(Co2);
     setRGBledTempColor(temp);
     pixels.show();
   }
-}
-
-void inConf() {
-  setConfig();
-  currentState = digitalRead(9);
-
-  if (currentState) {
-    Serial.println("currentState: high");
-  } else {
-    Serial.println("currentState: low");
-  }
-
-  if (lastState == HIGH && currentState == LOW) {
-    pressedTime = millis();
-  } else if (lastState == LOW && currentState == HIGH) {
-    releasedTime = millis();
-    long pressDuration = releasedTime - pressedTime;
-    if (pressDuration < 1000) {
-      buttonConfig = buttonConfig + 1;
-      if (buttonConfig > 7) buttonConfig = 0;
-    }
-  }
-
-  if (lastState == LOW && currentState == LOW) {
-    long passedDuration = millis() - pressedTime;
-    if (passedDuration > 4000) {
-      updateOLED2("Saved", "Release", "Button Now");
-      delay(1000);
-      updateOLED2("Rebooting", "in", "5 seconds");
-      delay(5000);
-      EEPROM.write(addr, char(buttonConfig));
-      EEPROM.commit();
-      delay(1000);
-      ESP.restart();
-    }
-
-  }
-  lastState = currentState;
-  delay(100);
-  inConf();
-}
-
-void setConfig() {
-  Serial.println("in setConfig");
-  if (buttonConfig == 0) {
-    u8g2.setDisplayRotation(U8G2_R0);
-    updateOLED2("T:C, PM:ug/m3", "LED Bar: on", "Long Press Saves");
-    inF = false;
-    inUSAQI = false;
-    useRGBledBar = true;
-  } else if (buttonConfig == 1) {
-    u8g2.setDisplayRotation(U8G2_R0);
-    updateOLED2("T:C, PM:US AQI", "LED Bar: on", "Long Press Saves");
-    inF = false;
-    inUSAQI = true;
-    useRGBledBar = true;
-  } else if (buttonConfig == 2) {
-    u8g2.setDisplayRotation(U8G2_R0);
-    updateOLED2("T:F PM:ug/m3", "LED Bar: on", "Long Press Saves");
-    inF = true;
-    inUSAQI = false;
-    useRGBledBar = true;
-  } else if (buttonConfig == 3) {
-    u8g2.setDisplayRotation(U8G2_R0);
-    updateOLED2("T:F PM:US AQI", "LED Bar: on", "Long Press Saves");
-    inF = true;
-    inUSAQI = true;
-    useRGBledBar = true;
-  } else  if (buttonConfig == 4) {
-    updateOLED2("T:C, PM:ug/m3", "LED Bar: off", "Long Press Saves");
-    inF = false;
-    inUSAQI = false;
-    useRGBledBar = false;
-  } else if (buttonConfig == 5) {
-    u8g2.setDisplayRotation(U8G2_R0);
-    updateOLED2("T:C, PM:US AQI", "LED Bar: off", "Long Press Saves");
-    inF = false;
-    inUSAQI = true;
-    useRGBledBar = false;
-  } else if (buttonConfig == 6) {
-    u8g2.setDisplayRotation(U8G2_R0);
-    updateOLED2("T:F PM:ug/m3", "LED Bar: off", "Long Press Saves");
-    inF = true;
-    inUSAQI = false;
-    useRGBledBar = false;
-  } else if (buttonConfig == 7) {
-    u8g2.setDisplayRotation(U8G2_R0);
-    updateOLED2("T:F PM:US AQI", "LED Bar: off", "Long Press Saves");
-    inF = true;
-    inUSAQI = true;
-    useRGBledBar = false;
-  }
-}
-
-void sendPing() {
-  String payload = "{\"wifi\":" + String(WiFi.RSSI()) +
-    ", \"boot\":" + loopCount +
-    "}";
 }
 
 void updateOLED2(String ln1, String ln2, String ln3) {
@@ -406,22 +275,12 @@ void updateOLED3() {
 
     u8g2.setFont(u8g2_font_t0_16_tf);
 
-    if (inF) {
-      if (temp > -10001) {
-        float tempF = (temp * 9 / 5) + 32;
-        sprintf(buf, "%.1f°F", tempF);
-      } else {
-        sprintf(buf, "-°F");
-      }
-      u8g2.drawUTF8(1, 10, buf);
+    if (temp > -10001) {
+      sprintf(buf, "%.1f°C", temp);
     } else {
-      if (temp > -10001) {
-        sprintf(buf, "%.1f°C", temp);
-      } else {
-        sprintf(buf, "-°C");
-      }
-      u8g2.drawUTF8(1, 10, buf);
+      sprintf(buf, "-°C");
     }
+    u8g2.drawUTF8(1, 10, buf);
 
     if (hum >= 0) {
       sprintf(buf, "%d%%", hum);
@@ -492,54 +351,6 @@ void updateOLED3() {
   } while (u8g2.nextPage());
 }
 
-void sendToServer() {
-  if (currentMillis - previoussendToServer >= sendToServerInterval) {
-    previoussendToServer += sendToServerInterval;
-    String payload = "{\"wifi\":" + String(WiFi.RSSI()) +
-      (Co2 < 0 ? "" : ", \"rco2\":" + String(Co2)) +
-      (pm01 < 0 ? "" : ", \"pm01\":" + String(pm01)) +
-      (pm25 < 0 ? "" : ", \"pm02\":" + String(pm25)) +
-      (pm10 < 0 ? "" : ", \"pm10\":" + String(pm10)) +
-//      (pm03PCount < 0 ? "" : ", \"pm003_count\":" + String(pm03PCount)) +
-      (TVOC < 0 ? "" : ", \"tvoc_index\":" + String(TVOC)) +
-      (NOX < 0 ? "" : ", \"nox_index\":" + String(NOX)) +
-      ", \"atmp\":" + String(temp) +
-      (hum < 0 ? "" : ", \"rhum\":" + String(hum)) +
-      ", \"boot\":" + loopCount +
-      "}";
-
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println(payload);
-      String POSTURL = APIROOT + "sensors/airgradient:" + String(getNormalizedMac()) + "/measures";
-      Serial.println(POSTURL);
-      WiFiClient client;
-      HTTPClient http;
-      http.begin(client, POSTURL);
-      http.addHeader("content-type", "application/json");
-      int httpCode = http.POST(payload);
-      String response = http.getString();
-      Serial.println(httpCode);
-      Serial.println(response);
-      http.end();
-
-      resetWatchdog();
-      loopCount++;
-    } else {
-      Serial.println("WiFi Disconnected");
-    }
-  }
-}
-
-void countdown(int from) {
-  debug("\n");
-  while (from > 0) {
-    debug(String(from--));
-    debug(" ");
-    delay(1000);
-  }
-  debug("\n");
-}
-
 void resetWatchdog() {
   Serial.println("Watchdog reset");
   digitalWrite(2, HIGH);
@@ -547,38 +358,6 @@ void resetWatchdog() {
   digitalWrite(2, LOW);
 }
 
-// Wifi Manager
-void connectToWifi() {
-  WiFiManager wifiManager;
-  //WiFi.disconnect(); //to delete previous saved hotspot
-  String HOTSPOT = "AG-" + String(getNormalizedMac());
-  updateOLED2("180s to connect", "to Wifi Hotspot", HOTSPOT);
-  wifiManager.setTimeout(180);
-  if (!wifiManager.autoConnect((const char * ) HOTSPOT.c_str())) {
-    Serial.println("failed to connect and hit timeout");
-    delay(6000);
-  }
-}
-
-void debug(String msg) {
-  if (DEBUG)
-    Serial.print(msg);
-}
-
-void debug(int msg) {
-  if (DEBUG)
-    Serial.print(msg);
-}
-
-void debugln(String msg) {
-  if (DEBUG)
-    Serial.println(msg);
-}
-
-void debugln(int msg) {
-  if (DEBUG)
-    Serial.println(msg);
-}
 
 String getNormalizedMac() {
   String mac = WiFi.macAddress();
@@ -696,40 +475,6 @@ void setRGBledColor(char color) {
       break;
     }
   }
-}
-
-void ledTest() {
-  updateOLED2("LED Test", "running", ".....");
-  for (int i = 0; i < 11; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 0, 0));
-        delay(30);
-        pixels.show();
-      }
-  delay(500);
-  for (int i = 0; i < 11; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 255, 0));
-        delay(30);
-        pixels.show();
-      }
-  delay(500);
-  for (int i = 0; i < 11; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 0, 255));
-        delay(30);
-        pixels.show();
-      }
-  delay(500);
-  for (int i = 0; i < 11; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 255, 255));
-        delay(30);
-        pixels.show();
-      }
-  delay(500);
-  for (int i = 0; i < 11; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-        delay(30);
-        pixels.show();
-      }
-  delay(500);
 }
 
 // Calculate PM2.5 US AQI
