@@ -1,18 +1,18 @@
 /*
 Important: This code is only for the DIY PRO / AirGradient ONE PCB Version 9 with the ESP-C3 MCU.
 
-It is a high quality sensor showing PM2.5, CO2, TVOC, NOx, Temperature and Humidity on a small display and LEDbar and can send data over Wifi.
+It is a high quality sensor showing PM2.5, CO2, TVOC, NOx, Temperature and Humidity on a small display and LEDbar and can send data over Wi-Fi.
 
 Build Instructions: https://www.airgradient.com/open-airgradient/instructions/
 
 Kits (including a pre-soldered version) are available: https://www.airgradient.com/indoor/
 
-The codes needs the following libraries installed:
-“WifiManager by tzapu, tablatronix” tested with version 2.0.17
-“U8g2” by oliver tested with version 2.34.22
+The code needs the following libraries installed:
+"WifiManager" by tzapu, tablatronix tested with version 2.0.17
+"U8g2" by oliver tested with version 2.34.22
 "Sensirion I2C SGP41" by Sensation Version 1.0.0
 "Sensirion Gas Index Algorithm" by Sensation Version 3.2.2
-“PMS Library” by Markusz Kacki version 1.1.0
+"PMS Library" by Markusz Kacki version 1.1.0
 "S8_UART" by Josep Comas Version 1.0.1
 "arduino-sht" by Johannes Winkelmann Version 1.2.5
 "Adafruit NeoPixel" by Adafruit Version 1.12.0
@@ -68,7 +68,7 @@ S8_sensor sensor;
 // time in seconds needed for NOx conditioning
 uint16_t conditioning_s = 10;
 
-// for peristent saving and loading
+// for persistent saving and loading
 int addr = 4;
 byte value;
 
@@ -77,7 +77,7 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 String APIROOT = "http://hw.airgradient.com/";
 
-// set to true to switch from Celcius to Fahrenheit
+// set to true to switch from Celsius to Fahrenheit
 boolean inF = false;
 
 // PM2.5 in US AQI (default ug/m3)
@@ -89,7 +89,7 @@ boolean displayTop = true;
 // use RGB LED Bar
 boolean useRGBledBar = true;
 
-// set to true if you want to connect to wifi. You have 60 seconds to connect. Then it will go into an offline mode.
+// set to true if you want to connect to Wi-Fi. You have 60 seconds to connect. Then it will go into an offline mode.
 boolean connectWIFI = false;
 
 int loopCount = 0;
@@ -587,7 +587,6 @@ void connectToWifi() {
     Serial.println("failed to connect and hit timeout");
     delay(6000);
   }
-
 }
 
 void debug(String msg) {
@@ -721,8 +720,8 @@ void setRGBledColor(char color) {
       }
       break;
     default:
-      // if nothing else matches, do the default
-      // default is optional
+      // if nothing else matches, do the default.
+      // default is optional.
       break;
     }
   }
