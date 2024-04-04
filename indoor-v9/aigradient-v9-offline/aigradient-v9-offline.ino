@@ -377,17 +377,17 @@ uint32_t getFeelGoodColor(float value, float low_bad, float low_good, float high
   extractRGB(good_color, good_r, good_g, good_b);
 
   if (value < low_good) { // value between low_good and low_bad
-      extractRGB(low_bad, bad_r, bad_g, bad_b);
+      extractRGB(low_color, bad_r, bad_g, bad_b);
       normalized = (low_good - value) / (low_good - low_bad);
   } else { // value between high_good and high_bad
-      extractRGB(high_bad, bad_r, bad_g, bad_b);
+      extractRGB(high_color, bad_r, bad_g, bad_b);
       normalized = (value - high_good) / (high_bad - high_good);
   }
 
   // interpolate the r, g and b values 
-  uint8_t r = (uint8_t) good_r * normalized + bad_r * (1 - normalized);
-  uint8_t g = (uint8_t) good_g * normalized + bad_g * (1 - normalized);
-  uint8_t b = (uint8_t) good_b * normalized + bad_b * (1 - normalized);
+  uint8_t r = (uint8_t) (bad_r * normalized + good_r * (1 - normalized));
+  uint8_t g = (uint8_t) (bad_g * normalized + good_g * (1 - normalized));
+  uint8_t b = (uint8_t) (bad_b * normalized + good_b * (1 - normalized));
 
   return ((r << 16) | (g << 8) | b);
 }
