@@ -51,7 +51,7 @@ PMS pms1(Serial0);
 
 PMS::DATA data1;
 
-S8_UART * sensor_S8;
+S8_UART* sensor_S8;
 S8_sensor sensor;
 
 // time in seconds needed for NOx conditioning
@@ -62,7 +62,7 @@ int addr = 4;
 byte value;
 
 // Display bottom right
-U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 
 // start at 0; incl. start, excl. end
 int co2_start = 0;
@@ -115,7 +115,7 @@ void setup() {
   if (DEBUG) {
     Serial.begin(115200);
     // see https://github.com/espressif/arduino-esp32/issues/6983
-    Serial.setTxTimeoutMs(0); // <<<====== solves the delay issue
+    Serial.setTxTimeoutMs(0);  // <<<====== solves the delay issue
   }
 
   Wire.begin(I2C_SDA, I2C_SCL);
@@ -141,7 +141,7 @@ void setup() {
   digitalWrite(2, LOW);
 
   sensor_S8 = new S8_UART(Serial1);
-} // setup()
+}  // setup()
 
 void loop() {
   currentMillis = millis();
@@ -150,7 +150,7 @@ void loop() {
   updateCo2();
   updatePm();
   updateTempHum();
-} // loop()
+}  // loop()
 
 void updateTVOC() {
   uint16_t error;
@@ -159,22 +159,22 @@ void updateTVOC() {
   uint16_t defaultT = 0x6666;
   uint16_t srawVoc = 0;
   uint16_t srawNox = 0;
-  uint16_t defaultCompensationRh = 0x8000; // in ticks as defined by SGP41
-  uint16_t defaultCompensationT = 0x6666; // in ticks as defined by SGP41
-  uint16_t compensationRh = 0; // in ticks as defined by SGP41
-  uint16_t compensationT = 0; // in ticks as defined by SGP41
+  uint16_t defaultCompensationRh = 0x8000;  // in ticks as defined by SGP41
+  uint16_t defaultCompensationT = 0x6666;   // in ticks as defined by SGP41
+  uint16_t compensationRh = 0;              // in ticks as defined by SGP41
+  uint16_t compensationT = 0;               // in ticks as defined by SGP41
 
   delay(1000);
 
-  compensationT = static_cast < uint16_t > ((temp + 45) * 65535 / 175);
-  compensationRh = static_cast < uint16_t > (hum * 65535 / 100);
+  compensationT = static_cast< uint16_t >((temp + 45) * 65535 / 175);
+  compensationRh = static_cast< uint16_t >(hum * 65535 / 100);
 
   if (conditioning_s > 0) {
     error = sgp41.executeConditioning(compensationRh, compensationT, srawVoc);
     conditioning_s--;
   } else {
     error = sgp41.measureRawSignals(compensationRh, compensationT, srawVoc,
-      srawNox);
+                                    srawNox);
   }
 
   if (currentMillis - previousTVOC >= tvocInterval) {
@@ -192,7 +192,7 @@ void updateTVOC() {
 void updateCo2() {
   if (currentMillis - previousCo2 >= co2Interval) {
     previousCo2 += co2Interval;
-    Co2 = sensor_S8 -> get_co2();
+    Co2 = sensor_S8->get_co2();
   }
 }
 
@@ -203,12 +203,10 @@ void updatePm() {
       pm01 = data1.PM_AE_UG_1_0;
       pm25 = data1.PM_AE_UG_2_5;
       pm10 = data1.PM_AE_UG_10_0;
-//      pm03PCount = data1.PM_RAW_0_3;
     } else {
       pm01 = -1;
       pm25 = -1;
       pm10 = -1;
-//      pm03PCount = -1;
     }
   }
 }
