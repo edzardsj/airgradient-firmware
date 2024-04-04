@@ -381,7 +381,7 @@ uint32_t getFeelGoodColor(float value, float low_bad, float low_good, float high
       normalized = (low_good - value) / (low_good - low_bad);
   } else { // value between high_good and high_bad
       extractRGB(high_bad, bad_r, bad_g, bad_b);
-      normalized = (low_good - value) / (low_good - low_bad);
+      normalized = (value - high_good) / (high_bad - high_good);
   }
 
   // interpolate the r, g and b values 
