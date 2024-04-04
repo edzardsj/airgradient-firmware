@@ -45,7 +45,7 @@ CC BY-SA 4.0 Attribution-ShareAlike 4.0 International License
 #include <VOCGasIndexAlgorithm.h>
 #include <U8g2lib.h>
 
-#define DEBUG true
+#define DEBUG false
 
 #define I2C_SDA 7
 #define I2C_SCL 6
@@ -142,6 +142,7 @@ void setup() {
   Wire.begin(I2C_SDA, I2C_SCL);
   pixels.begin();
   pixels.clear();
+  pixels.show();
 
   Serial1.begin(9600, SERIAL_8N1, 0, 1);
   Serial0.begin(9600);
@@ -152,36 +153,25 @@ void setup() {
   delay(300);
 
   sht.init(Wire);
-  //sht.setAccuracy(SHTSensor::SHT_ACCURACY_MEDIUM);
+  sht.setAccuracy(SHTSensor::SHT_ACCURACY_HIGH);
+  // sht.setAccuracy(SHTSensor::SHT_ACCURACY_MEDIUM);
   delay(300);
 
-  //init Watchdog
+  // init Watchdog
   pinMode(2, OUTPUT);
   digitalWrite(2, LOW);
 
   sensor_S8 = new S8_UART(Serial1);
 
-  EEPROM.begin(512);
-  delay(500);
-
-  // push button
-  pinMode(9, INPUT_PULLUP);
-
-  buttonConfig = String(EEPROM.read(addr)).toInt();
-  if (buttonConfig > 7) buttonConfig = 0;
-  delay(400);
-  setConfig();
-  Serial.println("buttonConfig: " + String(buttonConfig));
-
-
-   if (connectWIFI) connectToWifi();
-    if (WiFi.status() == WL_CONNECTED) {
+  if (connectWIFI) {
+    connectToWifi();
+    if (WiFi.status() == WL_CONNECTED && DEBUG) {
       sendPing();
       Serial.println(F("WiFi connected!"));
       Serial.println("IP address: ");
       Serial.println(WiFi.localIP());
     }
-  updateOLED2("Warming Up", "Serial Number:", String(getNormalizedMac()));
+  }
 } // end of setup
 
 void loop() {
