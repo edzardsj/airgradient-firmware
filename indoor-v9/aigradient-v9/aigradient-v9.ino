@@ -8,14 +8,14 @@ Build Instructions: https://www.airgradient.com/open-airgradient/instructions/
 Kits (including a pre-soldered version) are available: https://www.airgradient.com/indoor/
 
 The codes needs the following libraries installed:
-“WifiManager by tzapu, tablatronix” tested with version 2.0.11-beta
-“U8g2” by oliver tested with version 2.32.15
-"Sensirion I2C SGP41" by Sensation Version 0.1.0
-"Sensirion Gas Index Algorithm" by Sensation Version 3.2.1
-“pms” by Markusz Kakl version 1.1.0
+“WifiManager by tzapu, tablatronix” tested with version 2.0.17
+“U8g2” by oliver tested with version 2.34.22
+"Sensirion I2C SGP41" by Sensation Version 1.0.0
+"Sensirion Gas Index Algorithm" by Sensation Version 3.2.2
+“PMS Library” by Markusz Kacki version 1.1.0
 "S8_UART" by Josep Comas Version 1.0.1
-"Arduino-SHT" by Johannes Winkelmann Version 1.2.2
-"Adafruit NeoPixel" by Adafruit Version 1.11.0
+"arduino-sht" by Johannes Winkelmann Version 1.2.5
+"Adafruit NeoPixel" by Adafruit Version 1.12.0
 
 Configuration:
 Please set in the code below the configuration parameters.
@@ -90,7 +90,7 @@ boolean displayTop = true;
 boolean useRGBledBar = true;
 
 // set to true if you want to connect to wifi. You have 60 seconds to connect. Then it will go into an offline mode.
-boolean connectWIFI = true;
+boolean connectWIFI = false;
 
 int loopCount = 0;
 
