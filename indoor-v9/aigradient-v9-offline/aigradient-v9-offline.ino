@@ -148,6 +148,8 @@ void loop() {
   updatePm();
   updateTVOC();
   updateUI();
+
+  resetWatchdog();
 }  // loop()
 
 void updateTVOC() {
