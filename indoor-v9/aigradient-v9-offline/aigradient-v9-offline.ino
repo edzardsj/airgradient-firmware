@@ -85,7 +85,7 @@ int loopCount = 0;
 
 unsigned long currentMillis = 0;
 
-const int oledInterval = 5000;
+const int oledInterval = 2500;
 unsigned long previousOled = 0;
 
 const int tvocInterval = 1000;
@@ -226,6 +226,7 @@ void updateTempHum() {
 
 void updateUI() {
   if (currentMillis - previousOled >= oledInterval) {
+    previousOled += oledInterval;
     updateDisplay();
     setRGBledTempColor(temp);
     setRGBledHumColor(hum);
@@ -397,7 +398,7 @@ void setRGBledHumColor(int humValue) {
 }
 
 void setRGBledTempColor(float tempValue) {
-  setRGBledColor(getFeelGoodColor(tempValue, 16, 21, 23, 28, 0x0000FF, 0x00FF00, 0xFF0000), tmp_start, tmp_end);
+  setRGBledColor(getFeelGoodColor(tempValue, 13, 18, 21, 28, 0x0000FF, 0x00FF00, 0xFF0000), tmp_start, tmp_end);
 }
 
 void setRGBledColor(uint32_t color, int start, int end) {
