@@ -125,7 +125,7 @@ void setup() {
   Serial0.begin(9600);
   u8g2.begin();
 
-  showInfoLines("Warming Up", "Serial Number:", String(getNormalizedMac()));
+  showInfoLines("Warming Up", "Offline", "");
   sgp41.begin(Wire);
   delay(300);
 
@@ -148,6 +148,8 @@ void loop() {
   updatePm();
   updateTVOC();
   updateUI();
+
+  resetWatchdog();
 }  // loop()
 
 void updateTVOC() {
@@ -336,14 +338,6 @@ void resetWatchdog() {
   digitalWrite(2, HIGH);
   delay(20);
   digitalWrite(2, LOW);
-}
-
-
-String getNormalizedMac() {
-  String mac = WiFi.macAddress();
-  mac.replace(":", "");
-  mac.toLowerCase();
-  return mac;
 }
 
 void setRGBledCO2color(int co2Value) {
