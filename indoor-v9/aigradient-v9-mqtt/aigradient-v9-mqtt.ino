@@ -15,7 +15,7 @@ The code needs the following libraries installed:
 Configuration:
 Please set in the code below the configuration parameters.
 
-Select "LOLIN C3 Mini" Board
+Select "LOLIN C3 Mini" Board or a similar ESP32-C3-MINI board.
 
 CC BY-SA 4.0 Attribution-ShareAlike 4.0 International License
 
@@ -36,6 +36,7 @@ CC BY-SA 4.0 Attribution-ShareAlike 4.0 International License
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <Preferences.h>
+#include <WebServer.h>
 
 #define DEBUG false
 
@@ -48,6 +49,8 @@ boolean useRGBledBar = true;
 boolean inUSAQI = false;
 // Display Position
 boolean displayTop = true;
+
+uint16_t configServerPort = 8080;
 
 // start at 0; incl. start, excl. end
 int tmp_start = 0;
@@ -74,6 +77,8 @@ NOxGasIndexAlgorithm nox_algorithm;
 SHTSensor sht;
 WiFiManager wifiManager;
 Preferences preferences;
+WebServer server(configServerPort);
+const char *homepage = "<!DOCTYPE html> <html> <head> <meta charset=\"UTF-8\" /> <title>Airgradient Config</title> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <script> lOn = async () => { await fetch(\"/led-on\") }; lOff = async () => { await fetch(\"/led-off\") }; calCO2 = async () => { await fetch(\"/calibrate-co2\") }; res = async () => { await fetch(\"/reset\") }; </script> <body style=\"display: flex; flex-direction: column; gap: 20px; align-items: center;\"> <button type=\"button\" style=\"padding: 10px; min-width: 150px;\" onclick=\"lOn()\">LEDs on</button> <button type=\"button\" style=\"padding: 10px; min-width: 150px;\" onclick=\"lOff()\">LEDs off</button> <hr style=\"min-width: 150px;\" /> <span>DANGER ZONE</span> <button type=\"button\" style=\"padding: 10px; min-width: 150px;\" onclick=\"calCO2()\">Calibrate CO2 sensor</button> <button type=\"button\" style=\"padding: 10px; min-width: 150px;\" onclick=\"res()\">Reset all configs</button> </body> </html>";
 
 PMS pms1(Serial0);
 PMS::DATA data1;
@@ -114,7 +119,6 @@ String mqttPassword = "";
 
 void setup()
 {
-  // wifiManager.resetSettings();
 
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
   if (DEBUG)
@@ -161,7 +165,42 @@ void setup()
   digitalWrite(2, LOW);
 
   sensor_S8 = new S8_UART(Serial1);
-} // setup()
+
+  // init server
+  server.onNotFound([]()
+                    { server.send(404, "text/plain", "Link wurde nicht gefunden!"); });
+
+  server.on("/", []()
+            { server.send(200, "text/html", homepage); });
+  server.on("/led-on", []()
+            { server.send(200, "text/plain", "ok"); 
+            useRGBledBar = true;
+            setRGBleds(); });
+  server.on("/led-off", []()
+            { server.send(200, "text/plain", "ok"); 
+            setRGBledColor(0x000000,0,11);
+            useRGBledBar = false;
+            pixels.show(); });
+  server.on("/calibrate-co2", []()
+            { server.send(200, "text/plain", "ok");
+            sensor_S8->manual_calibration(); });
+  server.on("/reset", []()
+            { server.send(200, "text/plain", "ok");
+              
+              // reset wifi
+              wifiManager.resetSettings();
+
+              //reset mqtt
+              preferences.begin("mqtt-info", false);
+              preferences.clear();
+              preferences.end();
+
+              // reset leds
+              useRGBledBar = true;
+              setRGBleds(); });
+
+  server.begin();
+}
 
 void saveParamsCallback()
 {
@@ -205,6 +244,7 @@ void loop()
 {
   currentMillis = millis();
   wifiManager.process();
+  server.handleClient();
   updateTVOC();
   updateUI();
   updateCo2();
@@ -396,11 +436,16 @@ void updateUI()
   {
     previousOled += oledInterval;
     updateDisplay();
-    setRGBledTempColor(temp);
-    setRGBledHumColor(hum);
-    setRGBledCO2color(Co2);
-    pixels.show();
+    setRGBleds();
   }
+}
+
+void setRGBleds()
+{
+  setRGBledTempColor(temp);
+  setRGBledHumColor(hum);
+  setRGBledCO2color(Co2);
+  pixels.show();
 }
 
 void showInfoLines(String ln1, String ln2, String ln3)
