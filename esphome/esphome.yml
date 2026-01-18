@@ -3,16 +3,78 @@
 #
 # This configuration was blatantly yoinked from:
 # https://github.com/MallocArray/airgradient_esphome/blob/main/airgradient-one.yaml
-# Further modification done (Jan Schoneberg):
-# - Add switch to disable the oled display
-#
+
 # Needs ESPHome 2023.7.0 or later
 
 # Reference for substitutions: https://github.com/ajfriesen/ESPHome-AirGradient/blob/main/air-gradient-pro-diy.yaml
 substitutions:
   devicename: !secret airgradient_name
   ag_esphome_config_version: 0.1.0
-  led_strip_brightness: "25%"
+
+  # Configuration for the feel good meter
+  #Temperature colors
+
+
+  # Humidity color
+
+
+globals:
+  - id: feelGood_brightness
+    type: float
+    restore_value: yes
+    initial_value: "0.5"
+  # Temperature ranges for feel food meter
+  - id: feelGood_temperature_low_bad
+    type: float
+    restore_value: no
+    initial_value: "13.0"
+  - id: feelGood_temperature_low_good
+    type: float
+    restore_value: no
+    initial_value: "18.0"
+  - id: feelGood_temperature_high_good
+    type: float
+    restore_value: no
+    initial_value: "21.0"
+  - id: feelGood_temperature_high_bad
+    type: float
+    restore_value: no
+    initial_value: "28.0"
+
+  # Humidity ranges for feel food meter
+  - id: feelGood_humidity_low_bad
+    type: int
+    restore_value: no
+    initial_value: "35"
+  - id: feelGood_humidity_low_good
+    type: int
+    restore_value: no
+    initial_value: "45"
+  - id: feelGood_humidity_high_good
+    type: int
+    restore_value: no
+    initial_value: "55"
+  - id: feelGood_humidity_high_bad
+    type: int
+    restore_value: no
+    initial_value: "70"
+
+number:
+  - platform: template
+    id: feelGood_brightness_number
+    name: "Feel good meter brightness"
+    mode: "slider"
+    optimistic: yes
+    min_value: 0
+    max_value: 255
+    step: 1
+    on_value:
+      then:
+        - lambda:
+            id(feelGood_brightness) = static_cast<float>(id(feelGood_brightness_number).state) / 255;
+        - script.execute: update_co2_leds
+        - script.execute: update_humidity_leds
+        - script.execute: update_temperature_leds
 
 esphome:
   name: "${devicename}"
@@ -68,9 +130,24 @@ switch:
     on_turn_on:
       then:
         display.page.show: empty
-    on_turn_off: 
+    on_turn_off:
       then:
         - script.execute: switch_information_page
+  - platform: template
+    name: "Disable feel good meter"
+    id: disable_feelgood_meter
+    optimistic: True
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_off:
+      then:
+        - script.execute: update_co2_leds
+        - script.execute: update_humidity_leds
+        - script.execute: update_temperature_leds
+    on_turn_on:
+      then:
+        - light.turn_off: temperature_led
+        - light.turn_off: humidity_led
+        - light.turn_off: co2_led
 
 uart:
   # https://esphome.io/components/uart.html#uart
@@ -155,66 +232,8 @@ sensor:
         - clamp:
             min_value: 400  # 424 as of 2025-06 https://gml.noaa.gov/ccgg/trends/global.html
       on_value:
-        - if:
-            condition:
-                lambda: 'return id(co2).state < 800;'
-            then:
-              - light.turn_on:
-                  id: led_strip
-                  brightness: "${led_strip_brightness}"
-                  red: 0%
-                  green: 100%
-                  blue: 0%
-        - if:
-            condition:
-                lambda: 'return id(co2).state >= 800 && id(co2).state < 1000;'
-            then:
-              - light.turn_on:
-                  id: led_strip
-                  brightness: "${led_strip_brightness}"
-                  red: 100%
-                  green: 100%
-                  blue: 0%
-        - if:
-            condition:
-                lambda: 'return id(co2).state >= 1000 && id(co2).state < 1500;'
-            then:
-              - light.turn_on:
-                  id: led_strip
-                  brightness: "${led_strip_brightness}"
-                  red: 100%
-                  green: 50%
-                  blue: 0%
-        - if:
-            condition:
-                lambda: 'return id(co2).state >= 1500 && id(co2).state < 2000;'
-            then:
-              - light.turn_on:
-                  id: led_strip
-                  brightness: "${led_strip_brightness}"
-                  red: 100%
-                  green: 0%
-                  blue: 0%
-        - if:
-            condition:
-                lambda: 'return id(co2).state >= 2000 && id(co2).state < 3000;'
-            then:
-              - light.turn_on:
-                  id: led_strip
-                  brightness: "${led_strip_brightness}"
-                  red: 60%
-                  green: 0%
-                  blue: 60%
-        - if:
-            condition:
-                lambda: 'return id(co2).state >= 3000 && id(co2).state < 10000;'
-            then:
-              - light.turn_on:
-                  id: led_strip
-                  brightness: "${led_strip_brightness}"
-                  red: 40%
-                  green: 0%
-                  blue: 0%
+        - script.execute: update_co2_leds
+    update_interval: 120s
     id: senseair_s8
     uart_id: senseair_s8_uart
 
@@ -224,9 +243,15 @@ sensor:
     temperature:
       name: "Temperature"
       id: temp
+      on_value:
+        then:
+          - script.execute: update_temperature_leds
     humidity:
       name: "Humidity"
       id: humidity
+      on_value:
+        then:
+          - script.execute: update_humidity_leds
     address: 0x44
 
   - platform: wifi_signal
@@ -361,28 +386,262 @@ output:
 light:
   # https://esphome.io/components/light/esp32_rmt_led_strip.html
   - platform: esp32_rmt_led_strip
+    id: led_strip
+    internal: true
     color_correct: [50%,50%,50%]
     rgb_order: GRB
     pin: GPIO10  # Pin 16
     num_leds: 11
     chipset: ws2812
     name: "LED Strip"
-    id: led_strip
+
+  - platform: partition
+    name: "Temperature partition"
+    id: temperature_led
+    internal: true
+    segments:
+      - id: led_strip
+        from: 0
+        to: 2
+  - platform: partition
+    name: "Humidity partition"
+    id: humidity_led
+    internal: true
+    segments:
+      - id: led_strip
+        from: 4
+        to: 6
+  - platform: partition
+    name: "CO2 partition"
+    id: co2_led
+    internal: true
+    segments:
+      - id: led_strip
+        from: 8
+        to: 10
+  - platform: partition
+    name: "Alert"
+    id: alert_led
+    internal: true
+    segments:
+      - id: led_strip
+        from: 3
+        to: 3
+      - id: led_strip
+        from: 7
+        to: 7
+    effects:
+      - strobe:
+          name: "Alert strobe effect"
+          colors:
+              - state: true
+                brightness: 100%
+                red: 100%
+                green: 0%
+                blue: 0%
+                duration: 500ms
+              - state: false
+                brightness: 100%
+                red: 0%
+                green: 0%
+                blue: 0%
+                duration: 500ms
+
 
 script:
-  id: switch_information_page
-  then:
-    - if:
-        # Show boot screen for first 10 seconds with serial number and config version
-        condition:
-            lambda: 'return id(device_uptime).state < 10;'
-        then:
-          - display.page.show: boot
-          - lambda: id(device_uptime).set_update_interval(1);
-        else:
-          # Change page on display
-          - display.page.show_next: oled_display
-          - component.update: oled_display
+  - id: switch_information_page
+    then:
+      - if:
+          # Show boot screen for first 10 seconds with serial number and config version
+          condition:
+              lambda: 'return id(device_uptime).state < 10;'
+          then:
+            - display.page.show: boot
+            - lambda: id(device_uptime).set_update_interval(1);
+          else:
+            # Change page on display
+            - display.page.show_next: oled_display
+            - component.update: oled_display
+  - id: update_temperature_leds
+    then:
+      - lambda: |-
+          static const float lowRed = 0.0;
+          static const float lowGreen = 0.0;
+          static const float lowBlue = 1.0;
+
+          static const float goodRed = 0.0;
+          static const float goodGreen = 1.0;
+          static const float goodBlue = 0.0;
+
+          static const float highRed = 0.0;
+          static const float highGreen = 0.0;
+          static const float highBlue = 1.0;
+
+          if(id(disable_feelgood_meter).state)
+          {
+            return; // Don't turn on if manually turned off
+          }
+
+          float value = id(temp).state;
+          auto call = id(temperature_led).turn_on();
+          float red = 0.5;
+          float green = 0.5;
+          float blue = 0.5;
+          // Too low temperature
+          if (value <= id(feelGood_temperature_low_bad)) {
+            call.set_rgb(lowRed, lowGreen, lowBlue);
+          }
+          // Good temperature
+          else if (value >= id(feelGood_temperature_high_bad)) {
+            call.set_rgb(goodRed, goodGreen, goodBlue);
+          }
+          // Too high temperature
+          else if (value >= id(feelGood_temperature_low_good) && value <= id(feelGood_temperature_high_good)) {
+            call.set_rgb(highRed, highGreen, highBlue);
+          }
+          else {
+            // interpolate between the extreme states
+            float normalized;
+            if (value < id(feelGood_temperature_low_good)) // value between low_good and low_bad
+            {
+              normalized = (id(feelGood_temperature_low_good) - value) / (id(feelGood_temperature_low_good) - id(feelGood_temperature_low_bad));
+            }
+            else  // value between high_good and high_bad
+            {
+              normalized = (value - id(feelGood_temperature_high_good)) / (id(feelGood_temperature_high_bad) - id(feelGood_temperature_high_good));
+            }
+
+            red =   (lowRed   * normalized + goodRed   * (1 - normalized));
+            green = (lowGreen * normalized + goodGreen * (1 - normalized));
+            blue =  (lowBlue  * normalized + goodBlue  * (1 - normalized));
+            ESP_LOGD("script.update_temperature_leds", "Normalization: %2.3f, R: %2.3f, G: %2.3f, B: %2.3f", normalized, red, green, blue);
+          }
+          call.set_rgb(red, green, blue);
+          call.set_brightness(id(feelGood_brightness));
+          call.perform();
+  - id: update_humidity_leds
+    then:
+      - lambda: |-
+          static const float lowRed = 1.0;
+          static const float lowGreen = 0.5;
+          static const float lowBlue = 0.0;
+
+          static const float goodRed = 1.0;
+          static const float goodGreen = 1.0;
+          static const float goodBlue = 1.0;
+
+          static const float highRed = 0.0;
+          static const float highGreen = 1.0;
+          static const float highBlue = 1.0;
+
+          if(id(disable_feelgood_meter).state)
+          {
+            return; // Don't turn on if manually turned off
+          }
+
+          float value = id(humidity).state;
+          auto call = id(humidity_led).turn_on();
+          float red = 0.5;
+          float green = 0.5;
+          float blue = 0.5;
+          // Too low humidity
+          if (value <= id(feelGood_humidity_low_bad)) {
+            call.set_rgb(lowRed, lowGreen, lowBlue);
+          }
+          // Good humidity
+          else if (value >= id(feelGood_humidity_high_bad)) {
+            call.set_rgb(goodRed, goodGreen, goodBlue);
+          }
+          // Too high humidity
+          else if (value >= id(feelGood_humidity_low_good) && value <= id(feelGood_humidity_high_good)) {
+            call.set_rgb(highRed, highGreen, highBlue);
+          }
+          else {
+            // interpolate between the extreme states
+            float normalized;
+            if (value < id(feelGood_humidity_low_good)) // value between low_good and low_bad
+            {
+              normalized = (id(feelGood_humidity_low_good) - value) / (id(feelGood_humidity_low_good) - id(feelGood_humidity_low_bad));
+            }
+            else  // value between high_good and high_bad
+            {
+              normalized = (value - id(feelGood_humidity_high_good)) / (id(feelGood_humidity_high_bad) - id(feelGood_humidity_high_good));
+            }
+
+            red =   (lowRed   * normalized + goodRed   * (1 - normalized)) * id(feelGood_brightness);
+            green = (lowGreen * normalized + goodGreen * (1 - normalized)) * id(feelGood_brightness);
+            blue =  (lowBlue  * normalized + goodBlue  * (1 - normalized)) * id(feelGood_brightness);
+            ESP_LOGD("script.update_humidity_leds", "Normalization: %2.3f, R: %2.3f, G: %2.3f, B: %2.3f", normalized, red, green, blue);
+          }
+          call.set_rgb(red, green, blue);
+          call.set_brightness(id(feelGood_brightness));
+          call.perform();
+  - id: update_co2_leds
+    then:
+      - if:
+          condition:
+            - lambda: 'return !id(disable_feelgood_meter).state;'
+          then:
+          - if:
+              condition:
+                  lambda: 'return id(co2).state < 800;'
+              then:
+                - light.turn_on:
+                    id: co2_led
+                    brightness: !lambda 'return id(feelGood_brightness);'
+                    red: 0%
+                    green: 100%
+                    blue: 0%
+          - if:
+              condition:
+                  lambda: 'return id(co2).state >= 800 && id(co2).state < 1000;'
+              then:
+                - light.turn_on:
+                    id: co2_led
+                    brightness: !lambda 'return id(feelGood_brightness);'
+                    red: 100%
+                    green: 100%
+                    blue: 0%
+          - if:
+              condition:
+                  lambda: 'return id(co2).state >= 1000 && id(co2).state < 1500;'
+              then:
+                - light.turn_on:
+                    id: co2_led
+                    brightness: !lambda 'return id(feelGood_brightness);'
+                    red: 100%
+                    green: 50%
+                    blue: 0%
+          - if:
+              condition:
+                  lambda: 'return id(co2).state >= 1500 && id(co2).state < 2000;'
+              then:
+                - light.turn_on:
+                    id: co2_led
+                    brightness: !lambda 'return id(feelGood_brightness);'
+                    red: 100%
+                    green: 0%
+                    blue: 0%
+          - if:
+              condition:
+                  lambda: 'return id(co2).state >= 2000 && id(co2).state < 3000;'
+              then:
+                - light.turn_on:
+                    id: co2_led
+                    brightness: !lambda 'return id(feelGood_brightness);'
+                    red: 60%
+                    green: 0%
+                    blue: 60%
+          - if:
+              condition:
+                  lambda: 'return id(co2).state >= 3000 && id(co2).state < 10000;'
+              then:
+                - light.turn_on:
+                    id: co2_led
+                    brightness: !lambda 'return id(feelGood_brightness);'
+                    red: 40%
+                    green: 0%
+                    blue: 0%
 
 interval:
   - interval: 30s
